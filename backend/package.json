@@ -1,0 +1,19 @@
+{
+  "name": "1v1-platform-backend",
+  "version": "1.0.0",
+  "description": "Backend for 1v1 Competitive Programming Platform",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pg": "^8.11.5",
+    "socket.io": "^4.7.5"
+  }
+}
