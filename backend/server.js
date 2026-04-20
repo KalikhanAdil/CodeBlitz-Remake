@@ -19,7 +19,7 @@ const poolConfig = process.env.DATABASE_URL
       user: 'postgres',
       host: 'localhost',
       database: '1v1_platform',
-      password: process.env.DB_PASSWORD || 'your_password',
+      password: process.env.DB_PASSWORD || 'VideoConnorBlitz81234',
       port: 5432,
     };
 
