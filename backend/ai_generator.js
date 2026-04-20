@@ -83,6 +83,11 @@ Return ONLY valid JSON. No markdown backticks, no comments.
         });
 
         let jsonText = responseResult.response.text();
+        
+        // Gemini часто оборачивает JSON в маркдаун-блок, даже если просишь не делать этого.
+        // Убираем ```json и ``` по краям строки, чтобы JSON.parse не падал с SyntaxError.
+        jsonText = jsonText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+        
         return JSON.parse(jsonText);
 
     } catch (error) {
