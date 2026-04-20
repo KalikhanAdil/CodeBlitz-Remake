@@ -74,7 +74,7 @@ The output MUST be exactly a raw JSON object with the following schema:
 Return ONLY valid JSON. No markdown backticks, no comments.
 `;
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
         const responseResult = await model.generateContent({
             contents: [{ role: 'user', parts: [{ text: prompt }] }]
         });
