@@ -1,103 +1,141 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
+import AuthScreen from './components/AuthScreen';
 import Lobby from './components/Lobby';
 import MatchScreen from './components/MatchScreen';
+import ResultScreen from './components/ResultScreen';
 
-const SOCKET_URL = 'https://codeblitz-remake-1.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 function App() {
   const [socket, setSocket] = useState(null);
-  const [username, setUsername] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [user, setUser] = useState(null);
   
-  // Game State
-  const [matchData, setMatchData] = useState(null); // null = in lobby, object = in match
-  const [isLoading, setIsLoading] = useState(false);
+  // Game State: 'lobby' | 'searching' | 'loading' | 'playing' | 'result'
+  const [gameState, setGameState] = useState('lobby');
+  const [matchData, setMatchData] = useState(null);
+  const [resultData, setResultData] = useState(null);
 
+  // При наличии токена — подключаем сокет и грузим профиль
   useEffect(() => {
-    const newSocket = io(SOCKET_URL, { autoConnect: false });
-    
+    if (!token) {
+      if (socket) socket.disconnect();
+      setSocket(null);
+      setUser(null);
+      return;
+    }
+
+    // Загрузка профиля
+    fetch(`${API_URL}/api/profile/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Token expired');
+        return res.json();
+      })
+      .then(data => setUser(data))
+      .catch(() => {
+        localStorage.removeItem('token');
+        setToken(null);
+      });
+
+    // Подключение WebSocket с JWT
+    const newSocket = io(API_URL, {
+      auth: { token }
+    });
+
+    newSocket.on('connect_error', (err) => {
+      console.error('Socket Auth Error:', err.message);
+      if (err.message === 'Authentication error') {
+        localStorage.removeItem('token');
+        setToken(null);
+      }
+    });
+
+    newSocket.on('match_loading', () => {
+      setGameState('loading');
+    });
+
     newSocket.on('match_start', (data) => {
-      setIsLoading(false);
       setMatchData(data);
+      setGameState('playing');
     });
 
     newSocket.on('match_error', (data) => {
       alert(data.message);
-      setIsLoading(false);
+      setGameState('lobby');
     });
 
     newSocket.on('match_ended', (data) => {
-        alert(`Match Ended! Winner: ${data.winner}`);
-        setMatchData(null); // Return to lobby
+      setResultData(data);
+      setGameState('result');
+      // Обновляем профиль (свежий Elo)
+      fetch(`${API_URL}/api/profile/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).then(r => r.json()).then(setUser).catch(console.error);
     });
 
     setSocket(newSocket);
-
     return () => newSocket.close();
-  }, []);
+  }, [token]);
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (!username.trim()) return;
-    
-    socket.connect();
-    socket.emit('authenticate', username);
-    setIsLoggedIn(true);
+  const handleLogin = (newToken, userData) => {
+    localStorage.setItem('token', newToken);
+    setToken(newToken);
+    setUser(userData);
   };
 
-  if (!isLoggedIn) {
-    return (
-      <div className="login-screen">
-        <div className="glass login-form">
-          <h1 className="logo" style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>1v1 Blitz</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Enter your username to begin coding</p>
-          <form onSubmit={handleLogin}>
-            <input 
-              type="text" 
-              placeholder="Username..." 
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoFocus
-            />
-            <button type="submit" className="btn" style={{ width: '100%' }}>Enter Arena</button>
-          </form>
-        </div>
-      </div>
-    );
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setUser(null);
+    setGameState('lobby');
+    if (socket) socket.disconnect();
+  };
+
+  const handleBackToLobby = () => {
+    setGameState('lobby');
+    setMatchData(null);
+    setResultData(null);
+  };
+
+  // Экран авторизации
+  if (!token || !user) {
+    return <AuthScreen apiUrl={API_URL} onLogin={handleLogin} />;
   }
 
   return (
     <div className="app-container">
       <header className="header">
-        <div className="logo">1v1 Blitz</div>
-        <div className="user-info" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <span style={{ fontWeight: 500 }}>{username}</span>
-            {matchData && (
-                <button 
-                  className="btn btn-danger" 
-                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                  onClick={() => setMatchData(null)} // Заглушка: покинуть матч
-                >
-                  Forfeit
-                </button>
-            )}
+        <div className="logo">CodeBlitz</div>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <span className="elo-badge">⚡ {user.elo}</span>
+          <span style={{ fontWeight: 500 }}>{user.username}</span>
+          {gameState === 'playing' && (
+            <button className="btn btn-danger btn-sm" onClick={handleBackToLobby}>Forfeit</button>
+          )}
+          <button className="btn-ghost" onClick={handleLogout}>Log Out</button>
         </div>
       </header>
 
-      {!matchData ? (
-        <Lobby 
-          socket={socket} 
-          username={username} 
-          isLoading={isLoading} 
-          setIsLoading={setIsLoading} 
-        />
-      ) : (
-        <MatchScreen 
-          socket={socket} 
-          matchData={matchData} 
-          username={username} 
-        />
+      {gameState === 'lobby' && (
+        <Lobby socket={socket} user={user} apiUrl={API_URL} onSearch={() => setGameState('searching')} />
+      )}
+      {gameState === 'searching' && (
+        <Lobby socket={socket} user={user} apiUrl={API_URL} searching={true} onCancel={() => {
+          socket.emit('leave_queue');
+          setGameState('lobby');
+        }} />
+      )}
+      {gameState === 'loading' && (
+        <Lobby socket={socket} user={user} apiUrl={API_URL} loading={true} />
+      )}
+      {gameState === 'playing' && matchData && (
+        <MatchScreen socket={socket} matchData={matchData} username={user.username} />
+      )}
+      {gameState === 'result' && resultData && (
+        <ResultScreen data={resultData} username={user.username} onBack={handleBackToLobby} />
       )}
     </div>
   );
