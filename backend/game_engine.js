@@ -1,7 +1,7 @@
 import { redis } from './services/redisClient.js';
 import { activeMatches } from './services/matchmaker.js';
 import { executeCode } from './code_runner.js';
-import { pool } from './server.js';
+import { pool } from './db.js';
 
 export function setupSocketEvents(io, socket) {
     
