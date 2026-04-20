@@ -10,19 +10,53 @@ if (apiKey) {
     genAI = new GoogleGenerativeAI(apiKey);
 }
 
-export async function generateProblem(elo) {
-    // Если нет ключа, отдаем захардкоженную задачу-заглушку (Fallback)
+const FALLBACK_PROBLEMS = [
+    {
+        title: "Two Sum",
+        statement: "Given an array of integers and a target, return indices of the two numbers such that they add up to target.",
+        inputFormat: "First line contains array elements separated by spaces. Second line contains the target integer.",
+        outputFormat: "Two space-separated indices.",
+        testCases: [{ input: "2 7 11 15\n9", output: "0 1" }]
+    },
+    {
+        title: "Sum of Array",
+        statement: "Given an array of integers, output the sum of all elements.",
+        inputFormat: "A single line containing space-separated integers.",
+        outputFormat: "A single integer representing the sum.",
+        testCases: [{ input: "1 2 3 4 5", output: "15" }]
+    },
+    {
+        title: "Maximum Element",
+        statement: "Find the maximum element in a given list of numbers.",
+        inputFormat: "A single line containing space-separated integers.",
+        outputFormat: "A single integer representing the maximum value.",
+        testCases: [{ input: "10 5 20 8", output: "20" }]
+    },
+    {
+        title: "Reverse String",
+        statement: "Given a string, output the reversed version of it.",
+        inputFormat: "A single line containing a string.",
+        outputFormat: "A single line containing the reversed string.",
+        testCases: [{ input: "hello", output: "olleh" }]
+    },
+    {
+        title: "Factorial",
+        statement: "Calculate the factorial of a given non-negative integer n.",
+        inputFormat: "A single integer n.",
+        outputFormat: "A single integer representing n!",
+        testCases: [{ input: "5", output: "120" }]
+    }
+];
+
+function getRandomFallback() {
+    const randomIndex = Math.floor(Math.random() * FALLBACK_PROBLEMS.length);
+    return FALLBACK_PROBLEMS[randomIndex];
+}
+
+export async function generateProblem(elo, retries = 2) {
     if (!genAI) {
-        console.warn("GEMINI_API_KEY is not set. Returning fallback problem.");
-        return {
-            title: "Two Sum",
-            statement: "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.",
-            inputFormat: "nums = [2,7,11,15], target = 9",
-            outputFormat: "[0,1]",
-            testCases: [
-                { input: "[2,7,11,15]\n9", output: "[0,1]" }
-            ]
-        };
+        console.warn("GEMINI_API_KEY is not set. Returning random fallback problem.");
+        return getRandomFallback();
     }
 
     try {
@@ -49,11 +83,18 @@ Return ONLY valid JSON. No markdown backticks, no comments.
         });
 
         let jsonText = responseResult.response.text();
-        const problem = JSON.parse(jsonText);
-        return problem;
+        return JSON.parse(jsonText);
 
     } catch (error) {
-        console.error("AI Generation Error:", error);
-        throw error;
+        console.error(`AI Generation Error. Retries left: ${retries}`, error.message);
+        
+        if (retries > 0) {
+            // Ждем секунду и пробуем снова
+            await new Promise(res => setTimeout(res, 1000));
+            return generateProblem(elo, retries - 1);
+        }
+
+        console.warn("Returning random fallback problem due to complete AI failure.");
+        return getRandomFallback();
     }
 }
