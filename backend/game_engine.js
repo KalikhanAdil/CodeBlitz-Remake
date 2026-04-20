@@ -60,9 +60,13 @@ export function setupSocketEvents(io, socket) {
             const newWinnerElo = Math.round(winner.elo + K * (1 - expectedScoreWinner));
             const newLoserElo = Math.round(loser.elo + K * (0 - expectedScoreLoser));
 
-            // Обновляем в БД
-            await pool.query('UPDATE users SET elo = $1 WHERE id = $2', [newWinnerElo, winner.id]);
-            await pool.query('UPDATE users SET elo = $1 WHERE id = $2', [newLoserElo, loser.id]);
+            // Обновляем в БД (только реальных игроков)
+            if (!winner.isBot) {
+                await pool.query('UPDATE users SET elo = $1 WHERE id = $2', [newWinnerElo, winner.id]);
+            }
+            if (!loser.isBot) {
+                await pool.query('UPDATE users SET elo = $1 WHERE id = $2', [newLoserElo, loser.id]);
+            }
 
             io.to(matchId).emit('match_ended', { 
                 winner: winner.username, 
