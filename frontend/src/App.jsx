@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import Lobby from './components/Lobby';
 import MatchScreen from './components/MatchScreen';
 
-const SOCKET_URL = 'http://localhost:3001';
+const SOCKET_URL = 'https://codeblitz-remake-1.onrender.com';
 
 function App() {
   const [socket, setSocket] = useState(null);
