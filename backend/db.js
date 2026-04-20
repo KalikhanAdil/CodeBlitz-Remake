@@ -4,6 +4,9 @@ dotenv.config();
 
 const { Pool } = pg;
 
+// Отладка: покажет в логах Render, видит ли сервер переменную
+console.log('DATABASE_URL is set:', !!process.env.DATABASE_URL);
+
 const poolConfig = process.env.DATABASE_URL 
   ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
   : {
