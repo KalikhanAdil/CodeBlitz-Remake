@@ -8,21 +8,6 @@ let genAI = null;
 
 if (apiKey) {
     genAI = new GoogleGenerativeAI(apiKey);
-    
-    // ДЕБАГ: Один раз выводим список доступных моделей для этого ключа
-    setTimeout(async () => {
-        try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-            const data = await response.json();
-            if (data.models) {
-                console.log("✅ ДОСТУПНЫЕ МОДЕЛИ ДЛЯ ТВОЕГО КЛЮЧА:", data.models.map(m => m.name).join(', '));
-            } else {
-                console.log("❌ ОШИБКА АПИ КЛЮЧА:", data);
-            }
-        } catch(e) {
-            console.log("❌ ОШИБКА FETCH:", e.message);
-        }
-    }, 2000);
 }
 
 const FALLBACK_PROBLEMS = [
@@ -89,7 +74,7 @@ The output MUST be exactly a raw JSON object with the following schema:
 Return ONLY valid JSON. No markdown backticks, no comments.
 `;
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
         const responseResult = await model.generateContent({
             contents: [{ role: 'user', parts: [{ text: prompt }] }]
         });
